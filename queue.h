@@ -7,19 +7,17 @@
  * natrefz@mix.wvu.edu
  * 800071978
  */
- 
+
+#include <pthread.h> 
+
 #ifndef FINAL_PROJECT_QUEUE_HEADER_H_
 
 #define FINAL_PROJECT_QUEUE_HEADER_H_
 
-typedef struct Job {
-	char file_name[255];
-	struct Job* next;	
-} Job;
-
 typedef struct Queue {
 	Job* first;
 	int size;
+	pthread_mutex_t mutex;
 } Queue;
 
 Job* CreateJob(char* filename);
@@ -28,4 +26,5 @@ Queue* CreateQueue();
 void DestroyQueue();
 void Enqueue(Queue* queue, Job* job);
 int GetQueueSize(Queue* queue);
+
 #endif
