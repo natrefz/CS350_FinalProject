@@ -1,6 +1,6 @@
 /* Austin Siford
  * absiford@mix.wvu.edu
- *
+ * 800083596
  */
  
  /* Nick Trefz 
@@ -12,28 +12,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-Job* CreateJob(char* filename) {
-	if (!filename) {
-		return NULL;
-	}
-	Job* job = (Job*)malloc(sizeof(Job));
-	strcpy(job->file_name, &filename[0]);
-	job->next = NULL;
-	return job;
-}
-void DeleteJob(Job* job) {
-	if (!job) {
-		return;
-	}
-	if (job->next) {
-		job->next = NULL;
-	}
-	free(job);
-	job = NULL;
-}
 Queue* CreateQueue(){
 	Queue* queue = (Queue*)malloc(sizeof(struct Queue));
 	if (!queue) {
+		return NULL;
+	}
+	if (pthread_mutex_init(&(queue->mutex), NULL)) {
 		return NULL;
 	}
 	queue->first = NULL;
@@ -47,41 +31,57 @@ void DestroyQueue(Queue* queue) {
 	while (queue->first) {
 		Job* temp = queue->first;
 		queue-> first = temp->next;
-		DeleteJob(temp);
+		DestroyJob(temp);
+		temp = NULL;
 	}
 	if (queue->first) {
 		free(queue->first);
 		queue->first = NULL;
 	}
-	free(queue);
+	queue->size = 0;
 	queue = NULL;
 }
 void Enqueue(Queue* queue, Job* job) {
 	if (!queue || !job) {
 		return;
 	}
-	int i = 1;
-	Job* lastjob = queue->first;
-	for ( ; i<queue->size; ++i) {
-		lastjob = lastjob->next;
+	pthread_mutex_lock(&(queue->mutex));
+	if (queue->size > 0) {
+		int i = 1;
+		Job* lastjob = queue->first;
+		for (i=1; i<queue->size; ++i) {
+			lastjob = lastjob->next;
+		}
+		if (!lastjob) {
+			return;
+		}
+		lastjob->next = job;
+	} else {
+		queue->first = job;
 	}
-	if (!lastjob) {
-		return;
-	}
-	lastjob->next = job;
-	queue->size += 1;
+	queue->size += 1;	
+	pthread_mutex_unlock(&(queue->mutex));
 }
 Job* Dequeue(Queue* queue) {
 	if (!queue) {
 		return NULL;
 	}
+	if (!queue->first) {
+		return NULL;
+	}
+	pthread_mutex_lock(&(queue->mutex));
 	Job* job_to_return = queue->first;
 	queue->first = job_to_return->next;
+	queue->size -= 1;
+	pthread_mutex_unlock(&(queue->mutex));
 	return job_to_return;
 }
 int GetQueueSize(Queue* queue) {
 	if (!queue) {
 		return -1;
 	}
-	return queue->size;
+	pthread_mutex_lock(&(queue->mutex));
+	int r = queue->size;
+	pthread_mutex_unlock(&(queue->mutex));
+	return r;
 }
